@@ -26,6 +26,7 @@ public:
 
     //returns an allocated cstring that is of size length
     uint8_t* getCharsAt(uint32_t dividend, uint32_t divisor, int length) {
+        //TODO null byte not nessacary once full binary reads are implemented
         uint8_t* output = new uint8_t[length+1];
         output[length] = '\0';
 
@@ -43,7 +44,7 @@ public:
 
                     //prep for next byte
                     //determine how far pos overshoots the found character
-                    int entryStart = sum - entries[i].size;//TODO store previous int or smth so this doesn't need to be calcualted every time
+                    int entryStart = sum - entries[i].size;//TODO store previous int or something so this doesn't need to be calcualted every time
 
                     double pos2 = (pos - entryStart) / (sum - entryStart) * maxTableSize;
                     pos = pos2;
@@ -67,6 +68,7 @@ public:
     }
 
     uint8_t* convertStringToUint8Arr(string s) {
+        //TODO null byte not nessacary once full binary reads are implemented
         uint8_t* output = new uint8_t[s.length()+1];
         output[s.length()] = '\0';
 
@@ -132,9 +134,11 @@ public:
     void encodeFromStream(istream& input, ostream& output) {
         const int bufferSize = 500;
         char buffer[bufferSize];
-        while (input.read(buffer, 500)) {
-            encodeFromUintArr((uint8_t*)buffer, 500, output);
+        while (input.read(buffer, bufferSize)) {
+            encodeFromUintArr((uint8_t*)buffer, bufferSize, output); //encode a full read
         }
+        if(input.gcount() > 0)
+            encodeFromUintArr((uint8_t*)buffer, input.gcount(), output); //encode a partial read
     }
 
     //break input into the largest chunks that can be encoded and encode
@@ -142,29 +146,29 @@ public:
         vector<uint32_t> encodedData;
         vector<uint8_t> encodedLengths;
 
-        int start = 0, end = 1;
+        int start = 0,
+            end = 1;
+        int lastEncodeLen=end;
         uint32_t lastSuccessfulEncoding = 0;
-        int lastEncodeLen = end;
-        bool EOS = false; //end of stream
 
-        while (!EOS) {
+        bool EOB = false; //end of buffer
+        while (!EOB) {
             while (true) {//can be encoded
                 uint32_t encoded = encode(input+start, end);
 
                 uint8_t* data = getCharsAt(encoded, UINT32_MAX, length);
 
-                if (encoded == 0 ||
-                    compareBinaryData(data + start, input + start, end - start) ||
-                    start + end - 1 == length) {
+                //TODO check the contional in this if statement, its a bit wacky
+                if ((encoded == 0 || compareBinaryData(data+start, input+start, end-start)) || //if the data failed to encode
+                        start + end - 1 == length) { //or if the encoding is at the end of the buffer
 
-                    if (start + end - 1 == length) {
-                        EOS = true;
+                    if (start + end - 1 == length) {//if at the end of the buffer
+                        EOB = true;
+                    } else {
+                        //update start and end
+                        start += end - 1;
+                        end = 1;
                     }
-
-                    end--;
-
-                    start += end;
-                    end = 1;
 
                     break;
                 }
@@ -187,11 +191,12 @@ public:
 
 int main() {
     //create testing input data
-    string testData = "To Sherlock Holmes she is always the woman. I have seldom heard him mention her under any other name. In his eyes she eclipses and predominates the whole of her sex. It was not that he felt any emotion akin to love for Irene Adler. All emotions, and that one particularly, were abhorrent to his cold, precise but admirably balanced mind. He was, I take it, the most perfect reasoning and observing machine that the world has seen, but as a lover he would have placed himself in a false position. He never spoke of the softer passions, save with a gibe and a sneer. They were admirable things for the observer -- excellent for drawing the veil from men's motives and actions. But for the trained teasoner to admit such intrusions into his own delicate and finely adjusted temperament was to introduce a distracting factor which might throw a doubt upon all his mental results. Grit in a sensitive instrument, or a crack in one of his own high-power lenses, would not be more disturbing than a strong emotion in a nature such as his. And yet there was but one woman to him, and that woman was the late Irene Adler, of dubious and questionable memory. I had seen little of Holmes lately. My marriage had drifted us away from each other. My own complete happiness, and the home-centred interests which rise up around the man who first finds himself master of his own establishment, were sufficient to absorb all my attention, while Holmes, who loathed every form of society with his whole Bohemian soul, remained in our lodgings in Baker Street, buried among his old books, and alternating from week to week between cocaine and ambition, the drowsiness of the drug, and the fierce energy of his own keen nature. He was still, as ever, deeply attracted by the study of crime, and occupied his immense faculties and extraordinary powers of observation in following out those clews, and clearing up those mysteries which had been abandoned as hopeless by the official police. From time to time I heard some vague account of his doings: of his summons to Odessa in the case of the Trepoff murder, of his clearing up of the singular tragedy of the Atkinson brothers at Trincomalee, and finally of the mission which he had accomplished so delicately and successfully for the reigning family of Holland. Beyond these signs of his activity, however, which I merely shared with all the readers of the daily press, I knew little of my former friend and companion. ";
-    stringstream input(testData);
-    stringstream input2(testData);
-//    ifstream input("test.txt");
-//    ifstream input2("test.txt");
+    //string testData = "To Sherlock Holmes she is always the woman. I have seldom heard him mention her under any other name. In his eyes she eclipses and predominates the whole of her sex. It was not that he felt any emotion akin to love for Irene Adler. All emotions, and that one particularly, were abhorrent to his cold, precise but admirably balanced mind. He was, I take it, the most perfect reasoning and observing machine that the world has seen, but as a lover he would have placed himself in a false position. He never spoke of the softer passions, save with a gibe and a sneer. They were admirable things for the observer -- excellent for drawing the veil from men's motives and actions. But for the trained teasoner to admit such intrusions into his own delicate and finely adjusted temperament was to introduce a distracting factor which might throw a doubt upon all his mental results. Grit in a sensitive instrument, or a crack in one of his own high-power lenses, would not be more disturbing than a strong emotion in a nature such as his. And yet there was but one woman to him, and that woman was the late Irene Adler, of dubious and questionable memory. I had seen little of Holmes lately. My marriage had drifted us away from each other. My own complete happiness, and the home-centred interests which rise up around the man who first finds himself master of his own establishment, were sufficient to absorb all my attention, while Holmes, who loathed every form of society with his whole Bohemian soul, remained in our lodgings in Baker Street, buried among his old books, and alternating from week to week between cocaine and ambition, the drowsiness of the drug, and the fierce energy of his own keen nature. He was still, as ever, deeply attracted by the study of crime, and occupied his immense faculties and extraordinary powers of observation in following out those clews, and clearing up those mysteries which had been abandoned as hopeless by the official police. From time to time I heard some vague account of his doings: of his summons to Odessa in the case of the Trepoff murder, of his clearing up of the singular tragedy of the Atkinson brothers at Trincomalee, and finally of the mission which he had accomplished so delicately and successfully for the reigning family of Holland. Beyond these signs of his activity, however, which I merely shared with all the readers of the daily press, I knew little of my former friend and companion. ";
+    //string testData = "this is some test data";
+    //stringstream input(testData);
+    //stringstream input2(testData);
+    ifstream input("test.txt");
+    ifstream input2("test.txt");
 
     //create and build table
     table t;
@@ -207,11 +212,6 @@ int main() {
 
     ofstream outfile("output.txt");
     t.encodeFromStream(input2, outfile);
-//    t.encodeFromUintArr(t.convertStringToUint8Arr(testData),testData.size(), cout);
-
-
-    cout << t.getCharsAt(907753216, UINT32_MAX, 6) << endl;
-    cout << t.getCharsAt(3456508679, UINT32_MAX, 6) << endl;
 
     cout << "done." << endl;
 }
