@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <sstream>
+#include <fstream>
 
 using namespace std;
 //https://go-compression.github.io/algorithms/arithmetic/
@@ -121,11 +122,19 @@ public:
         maxTableSize = totalBytes;
 
         cout << "Number of unique bytes: " << entries.size() << endl;
+        //TODO create and output and serialize the table to it
     }
+
+    //TODO allow for unserializing tables
+    //TODO allow for decoding from a stream
 
     //reads a stream and breaks it into buffers that will then get individually encoded
     void encodeFromStream(istream& input, ostream& output) {
-        //TODO read the stream and send buffers of it into encodeFromUintArr()
+        const int bufferSize = 500;
+        char buffer[bufferSize];
+        while (input.read(buffer, 500)) {
+            encodeFromUintArr((uint8_t*)buffer, 500, output);
+        }
     }
 
     //break input into the largest chunks that can be encoded and encode
@@ -167,17 +176,12 @@ public:
             encodedLengths.push_back(lastEncodeLen);
         }
 
-        //print decoded data
-        cout << "rawBytes: " << length << endl;
-        cout << "dictionary size: " << entries.size() * sizeof(tableEntry) << endl;
-        cout << "compressed data size: " << encodedData.size() * sizeof(uint32_t) + encodedLengths.size() * sizeof(uint8_t) << endl;
-
+        //write the compressed buffer to output in binary form
         for (int i = 0; i < encodedData.size(); i++) {
-            uint8_t* data = getCharsAt(encodedData[i], UINT32_MAX, encodedLengths[i]);
-            cout << data;
-            delete data;
+
+            output.write(reinterpret_cast<const char*>(&encodedLengths[i]), sizeof(encodedLengths[i]));
+            output.write(reinterpret_cast<const char*>(&encodedData[i]), sizeof(encodedData[i]));
         }
-        cout << endl;
     }
 };
 
@@ -186,6 +190,8 @@ int main() {
     string testData = "To Sherlock Holmes she is always the woman. I have seldom heard him mention her under any other name. In his eyes she eclipses and predominates the whole of her sex. It was not that he felt any emotion akin to love for Irene Adler. All emotions, and that one particularly, were abhorrent to his cold, precise but admirably balanced mind. He was, I take it, the most perfect reasoning and observing machine that the world has seen, but as a lover he would have placed himself in a false position. He never spoke of the softer passions, save with a gibe and a sneer. They were admirable things for the observer -- excellent for drawing the veil from men's motives and actions. But for the trained teasoner to admit such intrusions into his own delicate and finely adjusted temperament was to introduce a distracting factor which might throw a doubt upon all his mental results. Grit in a sensitive instrument, or a crack in one of his own high-power lenses, would not be more disturbing than a strong emotion in a nature such as his. And yet there was but one woman to him, and that woman was the late Irene Adler, of dubious and questionable memory. I had seen little of Holmes lately. My marriage had drifted us away from each other. My own complete happiness, and the home-centred interests which rise up around the man who first finds himself master of his own establishment, were sufficient to absorb all my attention, while Holmes, who loathed every form of society with his whole Bohemian soul, remained in our lodgings in Baker Street, buried among his old books, and alternating from week to week between cocaine and ambition, the drowsiness of the drug, and the fierce energy of his own keen nature. He was still, as ever, deeply attracted by the study of crime, and occupied his immense faculties and extraordinary powers of observation in following out those clews, and clearing up those mysteries which had been abandoned as hopeless by the official police. From time to time I heard some vague account of his doings: of his summons to Odessa in the case of the Trepoff murder, of his clearing up of the singular tragedy of the Atkinson brothers at Trincomalee, and finally of the mission which he had accomplished so delicately and successfully for the reigning family of Holland. Beyond these signs of his activity, however, which I merely shared with all the readers of the daily press, I knew little of my former friend and companion. ";
     stringstream input(testData);
     stringstream input2(testData);
+//    ifstream input("test.txt");
+//    ifstream input2("test.txt");
 
     //create and build table
     table t;
@@ -199,8 +205,13 @@ int main() {
     }
     cout << endl;
 
-//    t.encodeFromStream(input2, cout);
-    t.encodeFromUintArr(t.convertStringToUint8Arr(testData),testData.size(), cout);
+    ofstream outfile("output.txt");
+    t.encodeFromStream(input2, outfile);
+//    t.encodeFromUintArr(t.convertStringToUint8Arr(testData),testData.size(), cout);
+
+
+    cout << t.getCharsAt(907753216, UINT32_MAX, 6) << endl;
+    cout << t.getCharsAt(3456508679, UINT32_MAX, 6) << endl;
 
     cout << "done." << endl;
 }
