@@ -46,7 +46,7 @@ void writeMagicNumber(ofstream &outfile) {
 
 class table {
 public:
-    uint32_t maxTableSize;
+    uint32_t maxTableSize = 0;
     vector<tableEntry> entries;
 
     //returns an allocated cstring that is of size length
@@ -151,6 +151,9 @@ public:
         }
         maxTableSize = totalBytes;
 
+        s.clear(); //reset the EOF state
+        s.seekg(0); //reset the file pointer, so that the file can be read again
+
         cout << "Number of unique bytes: " << entries.size() << endl;
         //TODO create and output and serialize the table to it
     }
@@ -237,7 +240,6 @@ public:
 
 int main() {
     ifstream input("test.txt", ios::binary | ios::in);
-    ifstream input2("test.txt", ios::binary | ios::in);//TODO, this is unnessacary, just reset the get pointer
 
     //create and build table
     table t;
@@ -254,7 +256,7 @@ int main() {
 
     ofstream outfile("output.txt");
     writeMagicNumber(outfile);
-    t.encodeFromStream(input2, outfile);
+    t.encodeFromStream(input, outfile);
     t.dumpTable();
 
     //open and read the file
