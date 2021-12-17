@@ -11,6 +11,9 @@ public:
     uint32_t size; // the proportion of the total table which it takes up
     uint8_t data; // the data that this adds as the table is traversed
     tableEntry(uint32_t size, uint8_t data) : size(size), data(data) {};
+    void dump() {
+        cout << (uint16_t)data << ", occurs " << size << endl;
+    }
 };
 
 //returns -1 if fraction 1 is less, 0 if they're equal, and 1 if fraction 1 is greater
@@ -119,7 +122,7 @@ public:
     }
     
     //read through the entire stream and build the table entries
-    void buildTableFromStream(istream& s) {
+    void buildTableFromDataStream(istream& s) {
         vector<int> byteCounter(0);
         byteCounter.resize(256);
         int totalBytes = 0;
@@ -146,7 +149,17 @@ public:
         //TODO create and output and serialize the table to it
     }
 
+    void dumpTable() {
+        for (int i = 0; i < entries.size(); i++) {
+            entries[i].dump();
+        }
+    }
+
     //TODO allow for unserializing tables
+    void buildTableFromArchiveStream(ifstream &s) {
+
+    }
+
     //TODO allow for decoding from a stream
 
     //reads a stream and breaks it into buffers that will then get individually encoded
@@ -219,7 +232,9 @@ int main() {
 
     //create and build table
     table t;
-    t.buildTableFromStream(input);
+    t.buildTableFromDataStream(input);
+
+    t.dumpTable();
 
     //print summary of the table
     for (int one = 0; one < 100; one++) {
