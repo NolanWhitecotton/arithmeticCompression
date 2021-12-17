@@ -127,7 +127,7 @@ public:
     }
     
     //read through the entire stream and build the table entries
-    void buildTableFromDataStream(istream& s) {
+    void buildTableFromDataStream(istream& s, ostream &output) {
         vector<int> byteCounter(0);
         byteCounter.resize(256);
         int totalBytes = 0;
@@ -154,7 +154,14 @@ public:
         s.seekg(0); //reset the file pointer, so that the file can be read again
 
         cout << "Number of unique bytes: " << entries.size() << endl;
-        //TODO create and output and serialize the table to it
+        
+        //write table to file
+        uint32_t entryCount = entries.size();
+        output.write(reinterpret_cast<const char*>(&entryCount), sizeof(uint32_t));
+        for (int i = 0; i < entryCount; i++) {
+            output.write(reinterpret_cast<const char*>(&entries[i].size), sizeof(uint32_t));
+            output.write(reinterpret_cast<const char*>(&entries[i].data), sizeof(uint8_t));
+        }
     }
 
     void dumpTable() {
@@ -163,17 +170,40 @@ public:
         }
     }
 
-    //TODO allow for unserializing tables
     void buildTableFromArchiveStream(ifstream &s) {
         //validate magicNumber
-        uint8_t fileMagicNumber[4];
-        uint8_t magicNumber[4] = { 0x08,0x2C,0x8B,0xF1 };
-        s.read((char*)magicNumber, 4);
-        if (compareBinaryData(fileMagicNumber, magicNumber, 4) != 0) {
+        uint32_t fileMagicNumber = 0;
+        uint32_t magicNumber = 0x082C8BF1;
+        s.read((char*)&magicNumber, 4);
+        if (fileMagicNumber == magicNumber) {
             cout << "Invalid file type, magic number is incorrect." << endl;
             exit(1);
         }
 
+        //get the number of table entries in the archive
+        uint32_t entryCount = 0;
+        s.read((char*)&entryCount, sizeof(uint32_t));
+
+        //read the entries
+        int totalBytes = 0;
+        for (int i = 0; i < entryCount; i++) {
+            //read entry
+            uint32_t size = 0;
+            uint8_t data = 0;
+            s.read((char*)&size, sizeof(uint32_t));
+            s.read((char*)&data, sizeof(uint8_t));
+
+            
+            //add entry
+            tableEntry ent(size, data);
+            entries.push_back(ent);
+
+            totalBytes += size;
+        }
+
+        maxTableSize = totalBytes;
+
+        cout << "Number of unique bytes: " << entries.size() << endl;
     }
 
     //TODO allow for decoding from a stream
@@ -230,7 +260,6 @@ public:
 
         //write the compressed buffer to output in binary form
         for (int i = 0; i < encodedData.size(); i++) {
-
             output.write(reinterpret_cast<const char*>(&encodedLengths[i]), sizeof(encodedLengths[i]));
             output.write(reinterpret_cast<const char*>(&encodedData[i]), sizeof(encodedData[i]));
         }
@@ -238,11 +267,16 @@ public:
 };
 
 int main() {
-    ifstream input("test.txt", ios::binary | ios::in);
 
-    //create and build table
+    ifstream input("test.txt", ios::binary | ios::in);
+    ofstream outfile("output.txt", ios::binary | ios::out);
+
+    //write file header
+    writeMagicNumber(outfile);
+
+    //create, build, and write the table
     table t;
-    t.buildTableFromDataStream(input);
+    t.buildTableFromDataStream(input, outfile);
 
     //print summary of the table
     for (int one = 0; one < 100; one++) {
@@ -252,11 +286,11 @@ int main() {
     }
     cout << endl;
 
-
-    ofstream outfile("output.txt");
-    writeMagicNumber(outfile);
     t.encodeFromStream(input, outfile);
     t.dumpTable();
+
+    input.close();
+    outfile.close();
 
     //open and read the file
     table t2;
