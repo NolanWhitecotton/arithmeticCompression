@@ -121,12 +121,15 @@ public:
     //read through the entire stream and build the table entries
     void buildTableFromStream(istream& s) {
         vector<int> byteCounter(0);
-        byteCounter.resize(255);
+        byteCounter.resize(256);
         int totalBytes = 0;
 
-        char byte[1];
-        while(s.read(byte,1)){
-            byteCounter[*byte]++;
+        uint8_t byte;
+        
+        while (s.read((char*)&byte, sizeof(char))) {
+            if (s.gcount() != sizeof(char))
+                break;
+            byteCounter.at((uint16_t)byte)++;
             totalBytes++;
         }
 
@@ -149,8 +152,8 @@ public:
     //reads a stream and breaks it into buffers that will then get individually encoded
     void encodeFromStream(istream& input, ostream& output) {
         const int bufferSize = 500;
-        char buffer[bufferSize];
-        while (input.read(buffer, bufferSize)) {
+        uint8_t buffer[bufferSize];
+        while (input.read((char*)buffer, bufferSize)) {
             encodeFromUintArr((uint8_t*)buffer, bufferSize, output); //encode a full read
         }
         if(input.gcount() > 0)
@@ -211,8 +214,8 @@ int main() {
     //string testData = "this is some test data";
     //stringstream input(testData);
     //stringstream input2(testData);
-    ifstream input("test.txt");
-    ifstream input2("test.txt");
+    ifstream input("test.txt", ios::binary | ios::in);
+    ifstream input2("test.txt", ios::binary | ios::in);
 
     //create and build table
     table t;
