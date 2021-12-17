@@ -51,9 +51,7 @@ public:
 
     //returns an allocated cstring that is of size length
     uint8_t* getCharsAt(uint32_t dividend, uint32_t divisor, int length) {
-        //TODO null byte not nessacary once full binary reads are implemented
-        uint8_t* output = new uint8_t[length+1];
-        output[length] = '\0';
+        uint8_t* output = new uint8_t[length];
 
         double d = (double)dividend / divisor;//TODO probably shouldnt convert this to a double at any point for rounding errors
         double pos = maxTableSize * d;//the position in the table that is being looked for
@@ -69,9 +67,9 @@ public:
 
                     //prep for next byte
                     //determine how far pos overshoots the found character
-                    int entryStart = sum - entries[i].size;//TODO store previous int or something so this doesn't need to be calcualted every time
+                    int entryStart = sum - entries[i].size;
 
-                    double pos2 = (pos - entryStart) / (sum - entryStart) * maxTableSize;
+                    double pos2 = (pos - entryStart) / ((double)sum - entryStart) * maxTableSize;
                     pos = pos2;
                     break;
                 }
@@ -92,10 +90,11 @@ public:
         return 0;
     }
 
+
+    //this is purely used for debugging, do not use
+    //converts a string to an allocated uint8_t array
     uint8_t* convertStringToUint8Arr(string s) {
-        //TODO null byte not nessacary once full binary reads are implemented
-        uint8_t* output = new uint8_t[s.length()+1];
-        output[s.length()] = '\0';
+        uint8_t* output = new uint8_t[s.length()];
 
         for (int i = 0; i < s.length(); i++) {
             output[i] = s[i];
@@ -145,7 +144,7 @@ public:
         //create table
         for (int i = 0; i < byteCounter.size(); i++) {
             if (byteCounter[i] != 0) {
-                tableEntry ent(byteCounter[i], i);//TODO fix this getting deallocated
+                tableEntry ent(byteCounter[i], i);
                 entries.push_back(ent);
             }
         }
@@ -248,7 +247,7 @@ int main() {
     //print summary of the table
     for (int one = 0; one < 100; one++) {
         uint8_t* data = t.getCharsAt(one, 100, 1);
-        cout << data;
+        cout.write((char*)data,1);
         delete[] data;
     }
     cout << endl;
