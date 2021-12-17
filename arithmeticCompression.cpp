@@ -14,9 +14,25 @@ public:
 };
 
 //returns -1 if fraction 1 is less, 0 if they're equal, and 1 if fraction 1 is greater
-int compareFractions(uint32_t dividend1, uint32_t divisor1, uint32_t dividend2, uint32_t divisor2){
-    //TODO implement compareFractions
-    return 0;
+int compareFractions(uint32_t n1, uint32_t d1, uint32_t n2, uint32_t d2){
+    //https://janmr.com/blog/2014/05/comparing-rational-numbers-without-overflow/
+    
+    //integer division comparison
+    uint32_t q1 = n1 / d1;
+    uint32_t q2 = n2 / d2;
+    
+    uint32_t r1 = n1 - q1 * d1;
+    uint32_t r2 = n2 - q2 * d2;
+
+    if (q1 > q2) return -1; 
+    if (q1 < q2) return 1;
+
+    if (r1 == 0 && r2 == 0) return 0;
+    if (r1 == 0) return 1;
+    if (r2 == 0) return -1;
+
+    //call recursively, flipping the fraction and using the remainder
+    return -1*compareFractions(d1, r1, d2, r2);
 }
 
 class table {
