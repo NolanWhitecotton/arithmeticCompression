@@ -276,6 +276,7 @@ public:
 
                     break;
                 }
+                delete[] data;
                 lastSuccessfulEncoding = encoded;
                 lastEncodeLen = end;
                 end++;
