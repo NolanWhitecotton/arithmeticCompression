@@ -206,7 +206,33 @@ public:
         cout << "Number of unique bytes: " << entries.size() << endl;
     }
 
-    //TODO allow for decoding from a stream
+    //reads input until end of file and decodes the data and writes the decoded data to output
+    void decodeFromDataStream(istream& input, ostream& output) {
+        //until eof
+        uint8_t length;
+        uint32_t dividend;
+
+        bool doneReading = false;
+        while (!doneReading) {
+            //read input
+            input.read((char*)&length, sizeof(length));
+            input.read((char*)&dividend, sizeof(dividend));
+
+            //check for EOF, this should never happen on a valid archive
+            if (input.eof()) {
+                doneReading = true;
+                break;
+            }
+
+            //get decoded value
+            uint8_t* data = getCharsAt(dividend, UINT32_MAX, length);
+
+            //write decoded value
+            output.write((char*)data, length);
+
+            delete[] data;
+        }
+    }
 
     //reads a stream and breaks it into buffers that will then get individually encoded
     void encodeFromStream(istream& input, ostream& output) {
@@ -295,9 +321,15 @@ int main() {
     //open and read the file
     table t2;
 
-    ifstream infile("output.txt");
+    ifstream infile("output.txt", ios::binary | ios::in);
+    ofstream decodedOutFile("decodedInput.txt", ios::binary | ios::out);
+
     t2.buildTableFromArchiveStream(infile);
     t2.dumpTable();
+    t2.decodeFromDataStream(infile, decodedOutFile);
+
+    infile.close();
+    decodedOutFile.close();
 
     cout << "done." << endl;
 }
